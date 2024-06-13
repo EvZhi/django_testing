@@ -1,6 +1,7 @@
 import pytest
 
 from django.conf import settings
+from django.urls import reverse
 
 from news.forms import CommentForm
 
@@ -8,25 +9,27 @@ pytestmark = pytest.mark.django_db
 
 
 @pytest.mark.usefixtures('list_news')
-def test_news_count(client, home_url):
+def test_news_count(client):
     """
     Тест количества новостей на главной странице.
 
     Количество новостей на главной странице - не более 10.
     """
+    home_url = reverse('news:home')
     response = client.get(home_url)
     object_list = response.context['object_list']
     assert object_list.count() == settings.NEWS_COUNT_ON_HOME_PAGE
 
 
 @pytest.mark.usefixtures('list_news')
-def test_news_order(client, home_url):
+def test_news_order(client):
     """
     Тест сортировки новостей.
 
     Новости отсортированы от самой свежей к самой старой.
     Свежие новости в начале списка.
     """
+    home_url = reverse('news:home')
     response = client.get(home_url)
     object_list = response.context['object_list']
     all_dates = [news.date for news in object_list]
@@ -35,7 +38,7 @@ def test_news_order(client, home_url):
 
 
 @pytest.mark.usefixtures('list_comments')
-def test_comments_order(author_client, detail_url):
+def test_comments_order(author_client, news):
     """
     Тест сортировки комментариев.
 
@@ -43,6 +46,7 @@ def test_comments_order(author_client, detail_url):
     отсортированы в хронологическом порядке:
     старые в начале списка, новые — в конце.
     """
+    detail_url = reverse('news:detail', args=(news.id,))
     response = author_client.get(detail_url)
     assert 'news' in response.context
     news = response.context['news']
@@ -60,7 +64,7 @@ def test_comments_order(author_client, detail_url):
     ),
 )
 def test_availability_form_for_different_users(
-    parametrized_client, author_client, status, detail_url
+    parametrized_client, author_client, status, news
 ):
     """
     Тест наличия формы комментария для различных пользователей.
@@ -70,6 +74,7 @@ def test_availability_form_for_different_users(
     Авторизованному пользователю доступна форма для отправки
     комментария на странице отдельной новости.
     """
+    detail_url = reverse('news:detail', args=(news.id,))
     response = parametrized_client.get(detail_url)
     assert ('form' in response.context) is status
     if parametrized_client == author_client:
