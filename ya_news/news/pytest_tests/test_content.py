@@ -56,26 +56,22 @@ def test_comments_order(author_client, news):
     assert all_timestamps == sorted_timestamps
 
 
-@pytest.mark.parametrize(
-    'parametrized_client, status',
-    (
-        (pytest.lazy_fixture('client'), False),
-        (pytest.lazy_fixture('author_client'), True)
-    ),
-)
-def test_availability_form_for_different_users(
-    parametrized_client, author_client, status, news
-):
+def test_anonymous_client_has_no_form(news, client):
     """
-    Тест наличия формы комментария для различных пользователей.
-
     Анонимному пользователю недоступна форма для отправки
     комментария на странице отдельной новости.
+    """
+    detail_url = reverse('news:detail', args=(news.id,))
+    response = client.get(detail_url)
+    assert 'form' not in response.context
+
+
+def test_authorized_client_has_form(author_client, news):
+    """
     Авторизованному пользователю доступна форма для отправки
     комментария на странице отдельной новости.
     """
     detail_url = reverse('news:detail', args=(news.id,))
-    response = parametrized_client.get(detail_url)
-    assert ('form' in response.context) is status
-    if parametrized_client == author_client:
-        assert isinstance(response.context['form'], CommentForm)
+    response = author_client.get(detail_url)
+    assert 'form' in response.context
+    assert isinstance(response.context['form'], CommentForm)
