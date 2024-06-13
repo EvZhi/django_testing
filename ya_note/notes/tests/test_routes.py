@@ -29,6 +29,13 @@ class TestRoutes(TestCase):
             author=cls.author
         )
 
+        cls.name_url_add = 'notes:add'
+        cls.name_url_success = 'notes:success'
+        cls.name_url_list = 'notes:list'
+        cls.name_url_detail = 'notes:detail'
+        cls.name_url_edit = 'notes:edit'
+        cls.name_url_delete = 'notes:delete'
+
     def test_pages_availability_for_anonymous_user(self):
         """
         Тест доступности страниц для анонимных пользователей.
@@ -57,9 +64,9 @@ class TestRoutes(TestCase):
         заметки done/, страница добавления новой заметки add/.
         """
         urls = (
-            ('notes:add'),
-            ('notes:success'),
-            ('notes:list'),
+            (self.name_url_add),
+            (self.name_url_success),
+            (self.name_url_list),
         )
         for name in urls:
             with self.subTest(name=name):
@@ -80,7 +87,11 @@ class TestRoutes(TestCase):
             (self.not_author_client, HTTPStatus.NOT_FOUND),
         )
         for user, status in users_statuses:
-            for name in ('notes:detail', 'notes:edit', 'notes:delete'):
+            for name in (
+                self.name_url_detail,
+                self.name_url_edit,
+                self.name_url_delete
+            ):
                 with self.subTest(user=user, name=name):
                     url = reverse(name, args=(self.note.slug,))
                     response = user.get(url)
@@ -97,12 +108,12 @@ class TestRoutes(TestCase):
         """
         login_url = reverse('users:login')
         urls = (
-            ('notes:add', None),
-            ('notes:success', None),
-            ('notes:list', None),
-            ('notes:detail', (self.note.slug,)),
-            ('notes:edit', (self.note.slug,)),
-            ('notes:delete', (self.note.slug,))
+            (self.name_url_add, None),
+            (self.name_url_success, None),
+            (self.name_url_list, None),
+            (self.name_url_detail, (self.note.slug,)),
+            (self.name_url_edit, (self.note.slug,)),
+            (self.name_url_delete, (self.note.slug,))
         )
         for name, args in urls:
             with self.subTest(name=name):

@@ -1,10 +1,10 @@
 from http import HTTPStatus
 
+from pytils.translit import slugify
+
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
-
-from pytils.translit import slugify
 
 from notes.models import Note
 from notes.forms import WARNING
@@ -32,27 +32,37 @@ class TestLogic(TestCase):
             'slug': 'new-slug'
         }
 
+        cls.url_add = reverse('notes:add')
+        cls.url_success = reverse('notes:success')
+
+    def equal_fields_note(self, note, data):
+        return (
+            note.title == data['title']
+            and note.text == data['text']
+            and note.slug == data['slug']
+        )
+
     def test_user_can_create_note(self):
         """Залогиненный пользователь может создать заметку."""
-        url = reverse('notes:add')
-        response = self.author_client.post(url, data=self.data)
-        self.assertRedirects(response, reverse('notes:success'))
-        self.assertEqual(Note.objects.count(), 1)
+        response = self.author_client.post(
+            self.url_add, data=self.data
+        )
+        number_up_to = Note.objects.count()
+        self.assertRedirects(response, self.url_success)
+        self.assertEqual(Note.objects.count(), number_up_to)
 
-        new_note = Note.objects.get()
-        self.assertEqual(new_note.title, self.data['title'])
-        self.assertEqual(new_note.text, self.data['text'])
-        self.assertEqual(new_note.slug, self.data['slug'])
+        new_note = Note.objects.last()
+        self.assertTrue(self.equal_fields_note(new_note, self.data))
         self.assertEqual(new_note.author, self.author)
 
     def test_anonymous_user_cant_create_note(self):
         """Анонимный пользователь не может создать заметку."""
-        url = reverse('notes:add')
-        response = self.client.post(url, self.data)
+        number_up_to = Note.objects.count()
+        response = self.client.post(self.url_add, self.data)
         login_url = reverse('users:login')
-        expected_url = f'{login_url}?next={url}'
+        expected_url = f'{login_url}?next={self.url_add}'
         self.assertRedirects(response, expected_url)
-        self.assertEqual(Note.objects.count(), 0)
+        self.assertEqual(Note.objects.count(), number_up_to)
 
     def test_not_unique_slug(self):
         """Невозможно создать две заметки с одинаковым slug."""
@@ -61,15 +71,15 @@ class TestLogic(TestCase):
             text='Текст',
             author=self.author,
         )
-        url = reverse('notes:add')
-        response = self.author_client.post(url, data={
+        number_up_to = Note.objects.count()
+        response = self.author_client.post(self.url_add, data={
             'title': 'Новый заголовок',
             'text': 'Новый текст',
             'slug': self.note.slug
         })
         self.assertFormError(response, 'form', 'slug',
                              errors=(self.note.slug + WARNING))
-        self.assertEqual(Note.objects.count(), 1)
+        self.assertEqual(Note.objects.count(), number_up_to)
 
     def test_empty_slug(self):
         """
@@ -78,11 +88,11 @@ class TestLogic(TestCase):
         Если при создании заметки не заполнен slug, то он формируется
         автоматически, с помощью функции pytils.translit.slugify
         """
-        url = reverse('notes:add')
         self.data.pop('slug')
-        response = self.author_client.post(url, self.data)
-        self.assertRedirects(response, reverse('notes:success'))
-        self.assertEqual(Note.objects.count(), 1)
+        response = self.author_client.post(self.url_add, self.data)
+        number_up_to = Note.objects.count()
+        self.assertRedirects(response, self.url_success)
+        self.assertEqual(Note.objects.count(), number_up_to)
         new_note = Note.objects.get()
         expected_slug = slugify(self.data['title'])
         self.assertEqual(new_note.slug, expected_slug)
@@ -96,8 +106,9 @@ class TestLogic(TestCase):
         )
         url = reverse('notes:delete', args=(self.note.slug,))
         response = self.author_client.post(url)
-        self.assertRedirects(response, reverse('notes:success'))
-        self.assertEqual(Note.objects.count(), 0)
+        number_up_to = Note.objects.count()
+        self.assertRedirects(response, self.url_success)
+        self.assertEqual(Note.objects.count(), number_up_to)
 
     def test_other_user_cant_delete_note(self):
         """Пользователь не может удалять чужие заметки."""
@@ -108,8 +119,9 @@ class TestLogic(TestCase):
         )
         url = reverse('notes:delete', args=(self.note.slug,))
         response = self.not_author_client.post(url)
+        number_up_to = Note.objects.count()
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        self.assertEqual(Note.objects.count(), 1)
+        self.assertEqual(Note.objects.count(), number_up_to)
 
     def test_author_can_edit_note(self):
         """Пользователь может редактировать свои заметки."""
@@ -120,11 +132,9 @@ class TestLogic(TestCase):
         )
         url = reverse('notes:edit', args=(self.note.slug,))
         response = self.author_client.post(url, self.data)
-        self.assertRedirects(response, reverse('notes:success'))
+        self.assertRedirects(response, self.url_success)
         self.note.refresh_from_db()
-        self.assertEqual(self.note.title, self.data['title'])
-        self.assertEqual(self.note.text, self.data['text'])
-        self.assertEqual(self.note.slug, self.data['slug'])
+        self.assertTrue(self.equal_fields_note(self.note, self.data))
 
     def test_other_user_cant_edit_note(self):
         """Пользователь не может редактировать чужие заметки."""
@@ -137,6 +147,4 @@ class TestLogic(TestCase):
         response = self.not_author_client.post(url, self.data)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         self.note.refresh_from_db()
-        self.assertNotEqual(self.note.title, self.data['title'])
-        self.assertNotEqual(self.note.text, self.data['text'])
-        self.assertNotEqual(self.note.slug, self.data['slug'])
+        self.assertFalse(self.equal_fields_note(self.note, self.data))
