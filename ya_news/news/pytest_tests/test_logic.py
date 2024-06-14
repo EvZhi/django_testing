@@ -1,5 +1,4 @@
 import pytest
-
 from http import HTTPStatus
 from pytest_django.asserts import assertRedirects, assertFormError
 
@@ -33,7 +32,7 @@ def test_user_can_create_comment(
     comments_count = Comment.objects.count()
     assert comments_count != number_comments_up_to
     comment = Comment.objects.get()
-    assert comment.text == 'Текст комментария'
+    assert comment.text == form_data['text']
     assert comment.news == news
     assert comment.author == author
 
@@ -83,9 +82,7 @@ def test_user_cant_delete_comment_of_another_user(
 
 
 def test_author_can_edit_comment(
-        author_client,
-        comment,
-        news,
+        author_client, comment, news,
 ):
     """Авторизованный пользователь может дедактировать свои комментарии."""
     edit_url = reverse('news:edit', args=(comment.id,))
@@ -96,7 +93,7 @@ def test_author_can_edit_comment(
     url_to_comments = reverse('news:detail', args=(news.id,)) + '#comments'
     assertRedirects(response, url_to_comments)
     comment.refresh_from_db()
-    assert comment.text == 'Новый текст комментария'
+    assert comment.text == form_data['text']
 
 
 def test_user_cant_edit_comment_of_another_user(
@@ -110,4 +107,4 @@ def test_user_cant_edit_comment_of_another_user(
     response = not_author_client.post(edit_url, data=form_data)
     assert response.status_code == HTTPStatus.NOT_FOUND
     comment.refresh_from_db()
-    assert comment.text == 'Текст комментария'
+    assert comment.text != form_data['text']

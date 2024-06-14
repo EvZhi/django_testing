@@ -1,8 +1,5 @@
-
 import pytest
-
 from http import HTTPStatus
-
 from pytest_django.asserts import assertRedirects
 
 from django.urls import reverse
@@ -10,16 +7,16 @@ from django.urls import reverse
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    'name, args',
+    'name, news_obj',
     (
         ('news:home', None),
-        ('news:detail', pytest.lazy_fixture('id_for_args')),
+        ('news:detail', pytest.lazy_fixture('news')),
         ('users:login', None),
         ('users:logout', None),
         ('users:signup', None),
     )
 )
-def test_pages_availability(client, name, args):
+def test_pages_availability(client, name, news_obj):
     """
     Тест доступности страниц для всех пользователей.
 
@@ -27,7 +24,10 @@ def test_pages_availability(client, name, args):
     страницы регистрации, входа в учётную
     запись и выхода из неё доступны всем пользователям.
     """
-    url = reverse(name, args=args)
+    if news_obj is not None:
+        url = reverse(name, args=(news_obj.id,))
+    else:
+        url = reverse(name)
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 

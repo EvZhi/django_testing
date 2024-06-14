@@ -35,6 +35,7 @@ class TestRoutes(TestCase):
         cls.name_url_detail = 'notes:detail'
         cls.name_url_edit = 'notes:edit'
         cls.name_url_delete = 'notes:delete'
+        cls.name_url_login = 'users:login'
 
     def test_pages_availability_for_anonymous_user(self):
         """
@@ -45,7 +46,7 @@ class TestRoutes(TestCase):
         """
         urls = (
             ('notes:home'),
-            ('users:login'),
+            (self.name_url_login),
             ('users:logout'),
             ('users:signup'),
         )
@@ -106,7 +107,7 @@ class TestRoutes(TestCase):
         заметки, отдельной заметки, редактирования или удаления
         заметки анонимный пользователь перенаправляется на страницу логина.
         """
-        login_url = reverse('users:login')
+        login_url = reverse(self.name_url_login)
         urls = (
             (self.name_url_add, None),
             (self.name_url_success, None),

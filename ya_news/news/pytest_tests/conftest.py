@@ -1,5 +1,4 @@
 import pytest
-
 from datetime import timedelta
 
 from django.conf import settings
@@ -52,11 +51,6 @@ def list_news():
         )
         list_news.append(news)
     News.objects.bulk_create(list_news)
-
-
-@pytest.fixture
-def id_for_args(news):
-    return (news.id,)
 
 
 @pytest.fixture
